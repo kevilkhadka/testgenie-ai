@@ -1,0 +1,25 @@
+# Java
+target/
+*.class
+*.jar
+
+# Maven
+.mvn/
+!.mvn/wrapper/
+
+# Spring Boot
+application.properties
+
+# Node
+node_modules/
+dist/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
