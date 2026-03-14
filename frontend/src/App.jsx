@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTestGenerator } from './hooks/useTestGenerator'
 import { CategoryCard } from './components/CategoryCard'
+import { RefinePanel } from './components/RefinePanel'
 
 const EXAMPLE_PROMPTS = [
   "User login with email and password",
@@ -16,7 +17,8 @@ export default function App() {
   const [copied, setCopied] = useState(false)
   const [screenshot, setScreenshot] = useState(null)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
-  const { result, loading, error, generate } = useTestGenerator()
+  const [result, setResult] = useState(null)
+  const { loading, error, generate } = useTestGenerator()
 
   function handleFileChange(e) {
     const file = e.target.files[0]
@@ -38,12 +40,13 @@ export default function App() {
     setScreenshotPreview(null)
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const hasInput = input.trim().length > 0
       || extraContext.trim().length > 0
       || screenshot !== null
     if (!hasInput) return
-    generate(input.trim(), extraContext.trim(), format, screenshot)
+    const data = await generate(input.trim(), extraContext.trim(), format, screenshot)
+    if (data) setResult(data)
   }
 
   function handleKeyDown(e) {
@@ -55,6 +58,13 @@ export default function App() {
     await navigator.clipboard.writeText(result.formattedOutput)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Called when RefinePanel gets a response from the AI
+  function handleRefined(refinedResult) {
+    setResult(refinedResult)
+    // Scroll back up to results
+    window.scrollTo({ top: 400, behavior: 'smooth' })
   }
 
   return (
@@ -227,6 +237,15 @@ export default function App() {
             </div>
             <pre>{result.formattedOutput}</pre>
           </div>
+
+          {/* Refinement Panel — always shown after results */}
+          <RefinePanel
+            originalContext={input || result.featureDescription}
+            existingCases={result.testCases}
+            exportFormat={format}
+            onRefined={handleRefined}
+          />
+
         </div>
       )}
 
