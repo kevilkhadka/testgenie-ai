@@ -26,18 +26,21 @@ public class ClaudeApiService {
         this.objectMapper = new ObjectMapper();
     }
 
-    public String generateTestCases(String featureDescription) {
-        String prompt = buildPrompt(featureDescription);
+    public String generateTestCases(String fullContext) {
+        String prompt = buildPrompt(fullContext);
 
         ObjectNode requestBody = objectMapper.createObjectNode();
         requestBody.put("model", model);
-        requestBody.put("max_tokens", 2000);
+        requestBody.put("max_tokens", 4000);
 
         ArrayNode messages = requestBody.putArray("messages");
 
         ObjectNode systemMessage = messages.addObject();
         systemMessage.put("role", "system");
-        systemMessage.put("content", "You are a senior QA engineer. Always respond with valid JSON only. No markdown, no explanation.");
+        systemMessage.put("content",
+            "You are a principal QA engineer with 15+ years of experience in critical systems. "
+            + "You specialize in finding edge cases that cause production incidents. "
+            + "Always respond with valid JSON only. No markdown, no explanation outside the JSON.");
 
         ObjectNode userMessage = messages.addObject();
         userMessage.put("role", "user");
@@ -54,24 +57,40 @@ public class ClaudeApiService {
         return extractTextFromResponse(responseJson);
     }
 
-    private String buildPrompt(String featureDescription) {
-        return "Given the following feature description, generate comprehensive test cases.\n\n"
-            + "Feature: " + featureDescription + "\n\n"
-            + "Return ONLY a valid JSON object with this exact structure:\n"
+    private String buildPrompt(String fullContext) {
+        return "You are analyzing the following feature/ticket to generate critical test cases.\n\n"
+            + fullContext + "\n\n"
+            + "Generate comprehensive, critical test cases. Return ONLY this exact JSON structure:\n"
             + "{\n"
+            + "  \"summary\": \"one sentence summary of what is being tested\",\n"
+            + "  \"riskAreas\": [\"risk 1\", \"risk 2\", \"risk 3\"],\n"
             + "  \"categories\": {\n"
-            + "    \"Happy Path\": [\"test case 1\", \"test case 2\"],\n"
-            + "    \"Negative Cases\": [\"test case 1\", \"test case 2\"],\n"
-            + "    \"Edge Cases\": [\"test case 1\", \"test case 2\"],\n"
-            + "    \"UI / UX\": [\"test case 1\", \"test case 2\"],\n"
-            + "    \"Performance\": [\"test case 1\", \"test case 2\"],\n"
-            + "    \"Security\": [\"test case 1\", \"test case 2\"]\n"
+            + "    \"Happy Path\": [\n"
+            + "      {\n"
+            + "        \"title\": \"Verify that...\",\n"
+            + "        \"priority\": \"P1\",\n"
+            + "        \"given\": \"Given the user is...\",\n"
+            + "        \"when\": \"When they...\",\n"
+            + "        \"then\": \"Then the system should...\"\n"
+            + "      }\n"
+            + "    ],\n"
+            + "    \"Negative Cases\": [],\n"
+            + "    \"Edge Cases\": [],\n"
+            + "    \"UI / UX\": [],\n"
+            + "    \"Performance\": [],\n"
+            + "    \"Security\": []\n"
             + "  }\n"
             + "}\n\n"
+            + "Priority rules:\n"
+            + "- P1 = critical, blocks release if failed\n"
+            + "- P2 = important, should fix before release\n"
+            + "- P3 = nice to fix, won't block release\n\n"
             + "Rules:\n"
-            + "- Each test case must start with Verify that...\n"
-            + "- Be specific to the feature, not generic\n"
-            + "- At least 3 test cases per category\n";
+            + "- At least 5 test cases per category\n"
+            + "- P1 cases must be truly critical — data loss, security, payment, auth\n"
+            + "- Given/When/Then must be specific and actionable\n"
+            + "- Risk areas should highlight the most dangerous failure points\n"
+            + "- If Jira ticket content is provided, extract acceptance criteria and base test cases on it\n";
     }
 
     private String extractTextFromResponse(String responseJson) {
