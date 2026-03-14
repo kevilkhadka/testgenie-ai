@@ -1,20 +1,18 @@
 import { useState } from 'react'
 
 export function useTestGenerator() {
-  const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   async function generate(featureDescription, extraContext, exportFormat, screenshot) {
     setLoading(true)
     setError(null)
-    setResult(null)
 
     try {
       let data
 
       if (screenshot) {
-        // If screenshot provided — use multipart/form-data upload endpoint
+        // Screenshot provided — use multipart upload endpoint
         const formData = new FormData()
         formData.append('screenshot', screenshot)
         if (featureDescription) formData.append('featureDescription', featureDescription)
@@ -24,9 +22,10 @@ export function useTestGenerator() {
         const response = await fetch('/api/generate/upload', {
           method: 'POST',
           body: formData,
-          // NOTE: Do NOT set Content-Type header manually
-          // Browser sets it automatically with the correct boundary for multipart
+          // Do NOT set Content-Type manually —
+          // browser sets it automatically with the correct multipart boundary
         })
+
         data = await response.json()
 
         if (!response.ok || !data.success) {
@@ -34,12 +33,13 @@ export function useTestGenerator() {
         }
 
       } else {
-        // No screenshot — use original JSON endpoint
+        // No screenshot — use plain JSON endpoint
         const response = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ featureDescription, extraContext, exportFormat }),
         })
+
         data = await response.json()
 
         if (!response.ok || !data.success) {
@@ -47,19 +47,15 @@ export function useTestGenerator() {
         }
       }
 
-      setResult(data)
+      return data
 
     } catch (err) {
       setError(err.message)
+      return null
     } finally {
       setLoading(false)
     }
   }
 
-  function reset() {
-    setResult(null)
-    setError(null)
-  }
-
-  return { result, loading, error, generate, reset }
+  return { loading, error, generate }
 }
