@@ -5,25 +5,50 @@ export function useTestGenerator() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  async function generate(featureDescription, exportFormat) {
+  async function generate(featureDescription, extraContext, exportFormat, screenshot) {
     setLoading(true)
     setError(null)
     setResult(null)
 
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ featureDescription, exportFormat }),
-      })
+      let data
 
-      const data = await response.json()
+      if (screenshot) {
+        // If screenshot provided — use multipart/form-data upload endpoint
+        const formData = new FormData()
+        formData.append('screenshot', screenshot)
+        if (featureDescription) formData.append('featureDescription', featureDescription)
+        if (extraContext) formData.append('extraContext', extraContext)
+        formData.append('exportFormat', exportFormat)
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.errorMessage || 'Something went wrong. Please try again.')
+        const response = await fetch('/api/generate/upload', {
+          method: 'POST',
+          body: formData,
+          // NOTE: Do NOT set Content-Type header manually
+          // Browser sets it automatically with the correct boundary for multipart
+        })
+        data = await response.json()
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.errorMessage || 'Something went wrong. Please try again.')
+        }
+
+      } else {
+        // No screenshot — use original JSON endpoint
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ featureDescription, extraContext, exportFormat }),
+        })
+        data = await response.json()
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.errorMessage || 'Something went wrong. Please try again.')
+        }
       }
 
       setResult(data)
+
     } catch (err) {
       setError(err.message)
     } finally {

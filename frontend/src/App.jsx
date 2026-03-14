@@ -11,13 +11,39 @@ const EXAMPLE_PROMPTS = [
 
 export default function App() {
   const [input, setInput] = useState('')
+  const [extraContext, setExtraContext] = useState('')
   const [format, setFormat] = useState('markdown')
   const [copied, setCopied] = useState(false)
+  const [screenshot, setScreenshot] = useState(null)
+  const [screenshotPreview, setScreenshotPreview] = useState(null)
   const { result, loading, error, generate } = useTestGenerator()
 
+  function handleFileChange(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setScreenshot(file)
+    setScreenshotPreview(URL.createObjectURL(file))
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    setScreenshot(file)
+    setScreenshotPreview(URL.createObjectURL(file))
+  }
+
+  function removeScreenshot() {
+    setScreenshot(null)
+    setScreenshotPreview(null)
+  }
+
   function handleSubmit() {
-    if (input.trim().length < 10) return
-    generate(input.trim(), format)
+    const hasInput = input.trim().length > 0
+      || extraContext.trim().length > 0
+      || screenshot !== null
+    if (!hasInput) return
+    generate(input.trim(), extraContext.trim(), format, screenshot)
   }
 
   function handleKeyDown(e) {
@@ -38,14 +64,44 @@ export default function App() {
         <div className="header-tag">AI-Powered · Built for QA Engineers</div>
         <h1>Test<span>Genie</span> AI</h1>
         <p className="header-sub">
-          Describe a feature. Get comprehensive test cases in seconds —
-          happy path, edge cases, security, and more.
+          Upload a Jira ticket screenshot or describe a feature —
+          get critical test cases with P1/P2/P3 ratings and Given/When/Then steps.
         </p>
       </header>
 
       <div className="input-section">
-        <label className="input-label">Feature Description</label>
 
+        {/* Screenshot Upload */}
+        <label className="input-label">Jira Ticket Screenshot (optional)</label>
+        <div
+          className={`upload-zone ${screenshotPreview ? 'has-image' : ''}`}
+          onDrop={handleDrop}
+          onDragOver={e => e.preventDefault()}
+        >
+          {screenshotPreview ? (
+            <div className="upload-preview">
+              <img src={screenshotPreview} alt="Jira ticket preview" />
+              <button className="btn-remove" onClick={removeScreenshot}>✕ Remove</button>
+            </div>
+          ) : (
+            <label className="upload-placeholder">
+              <span className="upload-icon">📎</span>
+              <span>Drop your Jira screenshot here or <u>browse</u></span>
+              <span className="upload-hint">PNG, JPG up to 10MB</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+            </label>
+          )}
+        </div>
+
+        {/* Feature Description */}
+        <label className="input-label" style={{ marginTop: '24px' }}>
+          Feature Description (optional)
+        </label>
         <div className="textarea-wrapper">
           <textarea
             value={input}
@@ -79,6 +135,19 @@ export default function App() {
           ))}
         </div>
 
+        {/* Extra Context */}
+        <label className="input-label" style={{ marginTop: '24px' }}>
+          Additional Context (optional)
+        </label>
+        <textarea
+          value={extraContext}
+          onChange={e => setExtraContext(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="e.g. This is a high traffic feature used by 1M users. Payment provider is Stripe..."
+          maxLength={1000}
+          style={{ minHeight: '80px' }}
+        />
+
         <div className="controls">
           <select
             className="format-select"
@@ -93,9 +162,9 @@ export default function App() {
           <button
             className="btn-generate"
             onClick={handleSubmit}
-            disabled={loading || input.trim().length < 10}
+            disabled={loading || (!input.trim() && !extraContext.trim() && !screenshot)}
           >
-            {loading ? 'Generating...' : '⚡ Generate Test Cases'}
+            {loading ? 'Analyzing...' : '⚡ Generate Critical Test Cases'}
           </button>
 
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -108,6 +177,27 @@ export default function App() {
 
       {result && (
         <div className="results">
+
+          {/* Summary */}
+          {result.summary && (
+            <div className="summary-box">
+              <span className="summary-label">AI Summary</span>
+              <p>{result.summary}</p>
+            </div>
+          )}
+
+          {/* Risk Areas */}
+          {result.riskAreas && result.riskAreas.length > 0 && (
+            <div className="risk-box">
+              <span className="risk-label">⚠️ Risk Areas</span>
+              <ul className="risk-list">
+                {result.riskAreas.map((risk, i) => (
+                  <li key={i}>{risk}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="results-header">
             <div className="results-meta">
               <strong>{result.totalCases}</strong> test cases generated
