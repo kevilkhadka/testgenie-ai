@@ -14,17 +14,14 @@ public class ClaudeApiService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${claude.api.key}")
+    @Value("${groq.api.key}")
     private String apiKey;
 
-    @Value("${claude.api.model:claude-sonnet-4-20250514}")
+    @Value("${groq.api.model:llama-3.3-70b-versatile}")
     private String model;
 
-    @Value("${claude.api.max-tokens:2000}")
-    private int maxTokens;
-
     public ClaudeApiService(WebClient.Builder webClientBuilder,
-                            @Value("${claude.api.url}") String apiUrl) {
+                            @Value("${groq.api.url}") String apiUrl) {
         this.webClient = webClientBuilder.baseUrl(apiUrl).build();
         this.objectMapper = new ObjectMapper();
     }
@@ -34,16 +31,20 @@ public class ClaudeApiService {
 
         ObjectNode requestBody = objectMapper.createObjectNode();
         requestBody.put("model", model);
-        requestBody.put("max_tokens", maxTokens);
+        requestBody.put("max_tokens", 2000);
 
         ArrayNode messages = requestBody.putArray("messages");
-        ObjectNode message = messages.addObject();
-        message.put("role", "user");
-        message.put("content", prompt);
+
+        ObjectNode systemMessage = messages.addObject();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", "You are a senior QA engineer. Always respond with valid JSON only. No markdown, no explanation.");
+
+        ObjectNode userMessage = messages.addObject();
+        userMessage.put("role", "user");
+        userMessage.put("content", prompt);
 
         String responseJson = webClient.post()
-                .header("x-api-key", apiKey)
-                .header("anthropic-version", "2023-06-01")
+                .header("Authorization", "Bearer " + apiKey)
                 .header("content-type", "application/json")
                 .bodyValue(requestBody.toString())
                 .retrieve()
@@ -54,10 +55,9 @@ public class ClaudeApiService {
     }
 
     private String buildPrompt(String featureDescription) {
-        return "You are a senior QA engineer with 10+ years of experience.\n\n"
-            + "Given the following feature description, generate comprehensive test cases.\n\n"
+        return "Given the following feature description, generate comprehensive test cases.\n\n"
             + "Feature: " + featureDescription + "\n\n"
-            + "Return ONLY a valid JSON object with this exact structure (no markdown, no explanation):\n"
+            + "Return ONLY a valid JSON object with this exact structure:\n"
             + "{\n"
             + "  \"categories\": {\n"
             + "    \"Happy Path\": [\"test case 1\", \"test case 2\"],\n"
@@ -70,23 +70,20 @@ public class ClaudeApiService {
             + "}\n\n"
             + "Rules:\n"
             + "- Each test case must start with Verify that...\n"
-            + "- Be specific to the feature described, not generic\n"
-            + "- Include at least 3 test cases per category\n"
-            + "- Detect the domain (auth, payments, file upload, search, etc.) and add relevant cases\n";
+            + "- Be specific to the feature, not generic\n"
+            + "- At least 3 test cases per category\n";
     }
 
     private String extractTextFromResponse(String responseJson) {
         try {
             JsonNode root = objectMapper.readTree(responseJson);
-            JsonNode content = root.path("content");
-
-            if (content.isArray() && content.size() > 0) {
-                return content.get(0).path("text").asText();
-            }
-
-            throw new RuntimeException("Unexpected response from Claude API");
+            return root.path("choices")
+                       .get(0)
+                       .path("message")
+                       .path("content")
+                       .asText();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Claude API response: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to parse Groq API response: " + e.getMessage(), e);
         }
     }
 }
