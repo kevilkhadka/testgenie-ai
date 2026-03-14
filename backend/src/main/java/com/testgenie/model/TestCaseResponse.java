@@ -7,7 +7,9 @@ import java.util.Map;
 public class TestCaseResponse {
 
     private String featureDescription;
-    private Map<String, List<String>> testCases;
+    private String summary;
+    private List<String> riskAreas;
+    private Map<String, List<Map<String, String>>> testCases;
     private int totalCases;
     private String exportFormat;
     private String formattedOutput;
@@ -15,14 +17,19 @@ public class TestCaseResponse {
     private boolean success;
     private String errorMessage;
 
-    public static TestCaseResponse success(
+    // --- Rich success factory method (new) ---
+    public static TestCaseResponse successRich(
             String featureDescription,
-            Map<String, List<String>> testCases,
+            String summary,
+            List<String> riskAreas,
+            Map<String, List<Map<String, String>>> testCases,
             String formattedOutput,
             String exportFormat) {
 
         TestCaseResponse r = new TestCaseResponse();
         r.featureDescription = featureDescription;
+        r.summary = summary;
+        r.riskAreas = riskAreas;
         r.testCases = testCases;
         r.totalCases = testCases.values().stream().mapToInt(List::size).sum();
         r.formattedOutput = formattedOutput;
@@ -32,6 +39,7 @@ public class TestCaseResponse {
         return r;
     }
 
+    // --- Error factory method ---
     public static TestCaseResponse error(String errorMessage) {
         TestCaseResponse r = new TestCaseResponse();
         r.success = false;
@@ -40,8 +48,11 @@ public class TestCaseResponse {
         return r;
     }
 
+    // --- Getters ---
     public String getFeatureDescription() { return featureDescription; }
-    public Map<String, List<String>> getTestCases() { return testCases; }
+    public String getSummary() { return summary; }
+    public List<String> getRiskAreas() { return riskAreas; }
+    public Map<String, List<Map<String, String>>> getTestCases() { return testCases; }
     public int getTotalCases() { return totalCases; }
     public String getExportFormat() { return exportFormat; }
     public String getFormattedOutput() { return formattedOutput; }
