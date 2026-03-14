@@ -8,69 +8,44 @@ public class TestCaseResponse {
 
     private String featureDescription;
     private Map<String, List<String>> testCases;
-    private int testCases;
+    private int totalCases;
     private String exportFormat;
     private String formattedOutput;
+    private String generatedAt;
     private boolean success;
     private String errorMessage;
 
-    // Success factory method
     public static TestCaseResponse success(
-        String featureDescription, 
-        Map<String, List<String>> testCases, 
-        int testCases, 
-        String exportFormat, 
-        String formattedOutput) {
-        TestCaseResponse response = new TestCaseResponse();
-        response.featureDescription = featureDescription;
-        response.testCases = testCases;
-        response.testCases = testCases.values().stream().flatMap(List::size).sum();
-        response.exportFormat = exportFormat;
-        response.formattedOutput = formattedOutput;
-        response.generatedAt = Instant.now().toString();
-        response.success = true;
-        return response;
+            String featureDescription,
+            Map<String, List<String>> testCases,
+            String formattedOutput,
+            String exportFormat) {
+
+        TestCaseResponse r = new TestCaseResponse();
+        r.featureDescription = featureDescription;
+        r.testCases = testCases;
+        r.totalCases = testCases.values().stream().mapToInt(List::size).sum();
+        r.formattedOutput = formattedOutput;
+        r.exportFormat = exportFormat;
+        r.generatedAt = Instant.now().toString();
+        r.success = true;
+        return r;
     }
-}
 
-// Error factory method
-public static TestCaseResponse error(String errorMessage) {
-    TestCaseResponse response = new TestCaseResponse();
-    response.errorMessage = errorMessage;
-    response.success = false;
-    response.generatedAt = Instant.now().toString();
-    return response;
-}
+    public static TestCaseResponse error(String errorMessage) {
+        TestCaseResponse r = new TestCaseResponse();
+        r.success = false;
+        r.errorMessage = errorMessage;
+        r.generatedAt = Instant.now().toString();
+        return r;
+    }
 
-//Getters
-public String getFeatureDescription() {
-    return featureDescription;
-}
-
-public Map<String, List<String>> getTestCases() {
-    return testCases;
-}
-
-public int getTotalTestCases() {
-    return totalTestCases;
-}
-
-public String getExportFormat() {
-    return exportFormat;
-}
-
-public String getFormattedOutput() {
-    return formattedOutput;
-}
-
-public boolean isSuccess() {
-    return success;
-}
-
-public String getErrorMessage() {
-    return errorMessage;
-}
-
-public String getGeneratedAt() {
-    return generatedAt;
+    public String getFeatureDescription() { return featureDescription; }
+    public Map<String, List<String>> getTestCases() { return testCases; }
+    public int getTotalCases() { return totalCases; }
+    public String getExportFormat() { return exportFormat; }
+    public String getFormattedOutput() { return formattedOutput; }
+    public String getGeneratedAt() { return generatedAt; }
+    public boolean isSuccess() { return success; }
+    public String getErrorMessage() { return errorMessage; }
 }
